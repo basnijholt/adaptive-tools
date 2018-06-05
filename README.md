@@ -1,5 +1,5 @@
 # adaptive-tools
-Tools for python-adaptive
+Tools for [python-adaptive](https://github.com/python-adaptive/adaptive).
 
 
 ## Installation
