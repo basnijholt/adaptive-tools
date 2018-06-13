@@ -108,7 +108,7 @@ class Runner(adaptive.Runner):
 # Running multiple runners, each on its own core. #
 ###################################################
 
-def _run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs):
+def run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs):
     import ipyparallel
     import zmq
     import adaptive
@@ -124,14 +124,14 @@ def _run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs
 
 
 default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
-default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}', save_interval=3600)
+default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}', interval=3600)
 
 
 def split_learners_in_executor(learners, executor, ncores, goal=None,
                                save_kwargs=default_save_kwargs,
                                client_kwargs=default_client_kwargs):
     if goal is None:
-        if not save_kwargs['save_interval']:
+        if not save_kwargs['interval']:
             raise Exception('Turn on periodic saving if there is no goal.')
         goal = lambda l: False
 
@@ -139,7 +139,7 @@ def split_learners_in_executor(learners, executor, ncores, goal=None,
     for i, _learners in enumerate(split(learners, ncores)):
         learner = BalancingLearner(_learners)
         save_kwargs['fname_pattern'] = f"{i:05d}_" + save_kwargs['fname_pattern']
-        fut = executor.submit(_run_learner_in_ipyparallel_client, learner,
+        fut = executor.submit(run_learner_in_ipyparallel_client, learner,
                               goal, save_kwargs, client_kwargs)
         futs.append(fut)
     return futs
