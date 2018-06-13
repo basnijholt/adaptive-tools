@@ -92,67 +92,54 @@ class BalancingLearner(adaptive.BalancingLearner):
             learner.load(os.path.join(folder, fname), compress=compress)
 
 
-class Runner(adaptive.Runner)
+class Runner(adaptive.Runner):
 
-    async def _periodic_saver(self, runner, folder, fname_pattern, interval, compress):
+    async def _periodic_saver(self, save_kwargs, interval):
         while self.status() == 'running':
             await asyncio.sleep(interval)
-            self.learner.save(folder, fname_pattern, compress)
+            self.learner.save(**save_kwargs)
 
-    def start_periodic_saver(self, runner, folder, fname_pattern=None,
-                             interval=3600, compress=True):
-        saving_coro = self._periodic_saver(runner, folder, fname_pattern, 
-                                           interval, compress)
-        return runner.ioloop.create_task(saving_coro)
+    def start_periodic_saver(self, save_kwargs, interval=3600):
+        saving_coro = self._periodic_saver(runner, save_kwargs, interval)
+        return self.ioloop.create_task(saving_coro)
 
 
 ###################################################
 # Running multiple runners, each on its own core. #
 ###################################################
 
-def _run_learner_in_ipyparallel_client(learner, goal, profile, folder,
-                                       fname_pattern,
-                                       timeout, save_interval, client_kwargs):
-    import hpc05
+def _run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs):
+    import ipyparallel
     import zmq
     import adaptive
     import asyncio
 
-    client = hpc05.Client(profile=profile,
-                          context=zmq.Context(),
-                          timeout=timeout,
-                          hostname=hostname,
-                          **client_kwargs)
+    client = ipyparallel.Client(context=zmq.Context(), **client_kwargs)
     client[:].use_cloudpickle()
     loop = asyncio.new_event_loop()
-    runner = adaptive.Runner(learner, executor=client, goal=goal, ioloop=loop)
-
-    if periodic_save:
-        try:
-            save_task = learner.start_periodic_saver(
-                runner, folder, fname_pattern, save_interval)
-        except AttributeError:
-            raise Exception(f'Cannot auto-save {type(learner)}.')
-
+    runner = Runner(learner, executor=client, goal=goal, ioloop=loop)
+    save_task = runner.start_periodic_saver(save_kwargs)
     loop.run_until_complete(runner.task)
     return learner
 
 
-def split_learners_in_executor(learners, executor, profile, ncores, goal=None,
-                               folder='tmp-{}', fname_pattern=None,
-                               periodic_save=True, timeout=300, save_interval=3600,
-                               client_kwargs={}):
+default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
+default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}', save_interval=3600)
+
+def split_learners_in_executor(learners, executor, ncores, goal=None,
+                               save_kwargs=default_save_kwargs,
+                               client_kwargs=default_client_kwargs):
     if goal is None:
-        if not periodic_save:
+        if not save_kwargs['save_interval']:
             raise Exception('Turn on periodic saving if there is no goal.')
         goal = lambda l: False
 
     futs = []
     for i, _learners in enumerate(split(learners, ncores)):
         learner = BalancingLearner(_learners)
+        save_kwargs['fname_pattern'] = f"{i:0d5}_" + save_kwargs['fname_pattern']
         fut = executor.submit(_run_learner_in_ipyparallel_client, learner,
-                              goal, profile, folder, f"{i:0d5}_" + fname_pattern,
-                              periodic_save, timeout, save_interval, client_kwargs)
+                              goal, save_kwargs, client_kwargs)
         futs.append(fut)
     return futs
 
