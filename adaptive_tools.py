@@ -108,7 +108,7 @@ class Runner(adaptive.Runner):
 # Running multiple runners, each on its own core. #
 ###################################################
 
-def run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs):
+def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, client_kwargs):
     import ipyparallel
     import zmq
     import adaptive
@@ -118,7 +118,7 @@ def run_learner_in_ipyparallel_client(learner, goal, save_kwargs, client_kwargs)
     client[:].use_cloudpickle()
     loop = asyncio.new_event_loop()
     runner = Runner(learner, executor=client, goal=goal, ioloop=loop)
-    save_task = runner.start_periodic_saver(save_kwargs)
+    save_task = runner.start_periodic_saver(save_kwargs, interval)
     loop.run_until_complete(runner.task)
     return learner
 
@@ -127,11 +127,11 @@ default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
 default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}', interval=3600)
 
 
-def split_learners_in_executor(learners, executor, ncores, goal=None,
+def split_learners_in_executor(learners, executor, ncores, goal=None, interval,
                                save_kwargs=default_save_kwargs,
                                client_kwargs=default_client_kwargs):
     if goal is None:
-        if not save_kwargs['interval']:
+        if interval == 0:
             raise Exception('Turn on periodic saving if there is no goal.')
         goal = lambda l: False
 
@@ -140,7 +140,7 @@ def split_learners_in_executor(learners, executor, ncores, goal=None,
         learner = BalancingLearner(_learners)
         save_kwargs['fname_pattern'] = f"{i:05d}_" + save_kwargs['fname_pattern']
         fut = executor.submit(run_learner_in_ipyparallel_client, learner,
-                              goal, save_kwargs, client_kwargs)
+                              goal, interval, save_kwargs, client_kwargs)
         futs.append(fut)
     return futs
 
