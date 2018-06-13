@@ -75,7 +75,8 @@ class AverageLearner(adaptive.AverageLearner):
 
 
 def get_fname(i, fname_pattern=None):
-    fname_pattern = 'data_learner_{}.pickle' or fname_pattern
+    if fname_pattern is None:
+        fname_pattern = 'data_learner_{}.pickle'
     return fname_pattern.format(f'{i:05d}')
 
 
@@ -124,10 +125,10 @@ def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, clie
 
 
 default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
-default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}', interval=3600)
+default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}')
 
 
-def split_learners_in_executor(learners, executor, ncores, goal=None, interval,
+def split_learners_in_executor(learners, executor, ncores, goal=None, interval=3600,
                                save_kwargs=default_save_kwargs,
                                client_kwargs=default_client_kwargs):
     if goal is None:
@@ -137,10 +138,11 @@ def split_learners_in_executor(learners, executor, ncores, goal=None, interval,
 
     futs = []
     for i, _learners in enumerate(split(learners, ncores)):
+        fname = f"{i:05d}_" + save_kwargs['fname_pattern']
+        _save_kwargs = {**save_kwargs, 'fname_pattern': fname}
         learner = BalancingLearner(_learners)
-        save_kwargs['fname_pattern'] = f"{i:05d}_" + save_kwargs['fname_pattern']
         fut = executor.submit(run_learner_in_ipyparallel_client, learner,
-                              goal, interval, save_kwargs, client_kwargs)
+                              goal, interval, _save_kwargs, client_kwargs)
         futs.append(fut)
     return futs
 
