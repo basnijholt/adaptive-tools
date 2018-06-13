@@ -74,32 +74,34 @@ class AverageLearner(adaptive.AverageLearner):
             pass
 
 
-def get_fname(i, fname_pattern=None):
+def get_fname(i, fname_pattern=None, fname_start_from=0):
     fname_pattern = 'data_learner_{}.pickle' or fname_pattern
-    return fname_pattern.format(f'{i:05d}')
+    n = i + fname_start_from
+    return fname_pattern.format(f'{n:05d}')
 
 
 class BalancingLearner(adaptive.BalancingLearner):
 
-    def save(self, folder, fname_pattern=None, compress=True):
+    def save(self, folder, fname_pattern=None, fname_start_from=0, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = get_fname(i, fname_pattern)
+            fname = get_fname(i, fname_pattern, fname_start_from)
             learner.save(os.path.join(folder, fname), compress=compress)
 
-    def load(self, folder, fname_pattern=None, compress=True):
+    def load(self, folder, fname_pattern=None, fname_start_from=0, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = get_fname(i, fname_pattern)
+            fname = get_fname(i, fname_pattern, fname_start_from)
             learner.load(os.path.join(folder, fname), compress=compress)
 
-    async def _periodic_saver(self, runner, folder, fname_pattern, interval, compress):
+    async def _periodic_saver(self, runner, folder, fname_pattern, fname_start_from, interval, compress):
         while runner.status() == 'running':
             await asyncio.sleep(interval)
-            self.save(folder, fname_pattern, compress)
+            self.save(folder, fname_pattern, fname_start_from, compress)
 
     def start_periodic_saver(self, runner, folder, fname_pattern=None,
-                             interval=3600, compress=True):
+                             fname_start_from=0, interval=3600, compress=True):
         saving_coro = self._periodic_saver(runner, folder, fname_pattern, 
-                                           interval, compress)
+                                           fname_start_from, interval,
+                                           compress)
         return runner.ioloop.create_task(saving_coro)
 
 
@@ -108,8 +110,8 @@ class BalancingLearner(adaptive.BalancingLearner):
 ###################################################
 
 def _run_learner_in_ipyparallel_client(learner, goal, profile, folder,
-                                      fname_pattern, periodic_save, timeout,
-                                      save_interval, client_kwargs):
+                                       fname_pattern, fname_start_from,
+                                       timeout, save_interval, client_kwargs):
     import hpc05
     import zmq
     import adaptive
@@ -126,8 +128,8 @@ def _run_learner_in_ipyparallel_client(learner, goal, profile, folder,
 
     if periodic_save:
         try:
-            save_task = learner.start_periodic_saver(runner, fname_pattern,
-                                                     save_interval)
+            save_task = learner.start_periodic_saver(
+                runner, folder, fname_pattern, fname_start_from, save_interval)
         except AttributeError:
             raise Exception(f'Cannot auto-save {type(learner)}.')
 
@@ -136,7 +138,7 @@ def _run_learner_in_ipyparallel_client(learner, goal, profile, folder,
 
 
 def split_learners_in_executor(learners, executor, profile, ncores, goal=None,
-                               folder='tmp-{}', fname_pattern=None,
+                               folder='tmp-{}', fname_pattern=None, fname_start_from=0,
                                periodic_save=True, timeout=300, save_interval=3600,
                                client_kwargs={}):
     if goal is None:
@@ -149,8 +151,8 @@ def split_learners_in_executor(learners, executor, profile, ncores, goal=None,
         learner = BalancingLearner(_learners)
         fut = executor.submit(_run_learner_in_ipyparallel_client, learner,
                               goal, profile, folder.format(f'{i:05d}'),
-                              fname_pattern, periodic_save, timeout,
-                              save_interval, client_kwargs)
+                              fname_pattern, fname_start_from, periodic_save,
+                              timeout, save_interval, client_kwargs)
         futs.append(fut)
     return futs
 
