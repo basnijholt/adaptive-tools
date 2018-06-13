@@ -100,7 +100,7 @@ class Runner(adaptive.Runner):
             await asyncio.sleep(interval)
             self.learner.save(**save_kwargs)
 
-    def start_periodic_saver(self, save_kwargs, interval=3600):
+    def start_periodic_saver(self, save_kwargs, interval):
         saving_coro = self._periodic_saver(save_kwargs, interval)
         return self.ioloop.create_task(saving_coro)
 
