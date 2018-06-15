@@ -141,11 +141,9 @@ def split_learners_in_executor(learners, executor, ncores, goal=None, interval=3
 
     futs = []
     for i, _learners in enumerate(split(learners, ncores)):
-        fname = f"{i:05d}_" + save_kwargs['fname_pattern']
-        _save_kwargs = {**save_kwargs, 'fname_pattern': fname}
         learner = BalancingLearner(_learners)
         fut = executor.submit(run_learner_in_ipyparallel_client, learner,
-                              goal, interval, _save_kwargs, client_kwargs)
+                              goal, interval, save_kwargs, client_kwargs)
         futs.append(fut)
     return futs
 
@@ -181,4 +179,3 @@ def alphanum_key(s):
         except:
             keys.append(_s)
     return keys
-
