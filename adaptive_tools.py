@@ -23,32 +23,45 @@ def save(fname, data, compress=True):
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def load(self, fname, compress=True):
+def load(fname=None, compress=True):
     _open = gzip.open if compress else open
     with _open(fname, 'rb') as f:
         return pickle.load(f)
 
 
+def get_fname(learner, fname):
+    if fname is not None:
+        return fname
+    elif hasattr(learner, 'fname'):
+        return learner.fname
+    else:
+        raise Exception('No `fname` supplied.')
+
+
 class Learner1D(adaptive.Learner1D):
 
-    def save(self, fname, compress=True):
+    def save(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         save(fname, self.data, compress)
 
-    def load(self, fname, compress=True):
+    def load(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         try:
-            self.data = load(self, fname, compress)
+            self.data = load(fname, compress)
         except FileNotFoundError:
             pass
 
 
 class Learner2D(adaptive.Learner2D):
 
-    def save(self, fname, compress=True):
+    def save(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         save(fname, self.data, compress)
 
-    def load(self, fname, compress=True):
+    def load(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         try:
-            self.data = load(self, fname, compress)
+            self.data = load(fname, compress)
             self.refresh_stack()
         except FileNotFoundError:
             pass
@@ -62,13 +75,15 @@ class Learner2D(adaptive.Learner2D):
 
 class AverageLearner(adaptive.AverageLearner):
 
-    def save(self, fname, compress=True):
+    def save(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         data = (self.data, self.npoints, self.sum_f, self.sum_f_sq)
         save(fname, data, compress)
 
-    def load(self, fname, compress=True):
+    def load(self, fname=None, compress=True):
+        fname = get_fname(self, fname)
         try:
-            data = load(self, fname, compress)
+            data = load(fname, compress)
             self.data, self.npoints, self.sum_f, self.sum_f_sq = data
         except FileNotFoundError:
             pass
@@ -76,23 +91,14 @@ class AverageLearner(adaptive.AverageLearner):
 
 class BalancingLearner(adaptive.BalancingLearner):
 
-    @staticmethod
-    def get_fname(learner, i, fname_pattern=None):
-        if hasattr(learner, 'fname'):
-            return learner.fname
-        elif fname_pattern is None:
-            return f'data_learner_{i:05d}.pickle'
-        else:
-            return fname_pattern.format(f'{i:05d}')
-
-    def save(self, folder, fname_pattern=None, compress=True):
+    def save(self, folder, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = self.get_fname(learner, i, fname_pattern)
+            fname = get_fname(learner, fname=None)
             learner.save(os.path.join(folder, fname), compress=compress)
 
-    def load(self, folder, fname_pattern=None, compress=True):
+    def load(self, folder, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = self.get_fname(learner, i, fname_pattern)
+            fname = get_fname(learner, fname=None)
             learner.load(os.path.join(folder, fname), compress=compress)
 
 
@@ -128,7 +134,7 @@ def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, clie
 
 
 default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
-default_save_kwargs = dict(fname_pattern=None, folder='tmp-{}')
+default_save_kwargs = dict(folder='tmp-{}')
 
 
 def split_learners_in_executor(learners, executor, ncores, goal=None, interval=3600,
