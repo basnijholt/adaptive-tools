@@ -74,22 +74,25 @@ class AverageLearner(adaptive.AverageLearner):
             pass
 
 
-def get_fname(i, fname_pattern=None):
-    if fname_pattern is None:
-        fname_pattern = 'data_learner_{}.pickle'
-    return fname_pattern.format(f'{i:05d}')
-
-
 class BalancingLearner(adaptive.BalancingLearner):
+
+    @staticmethod
+    def get_fname(learner, i, fname_pattern=None):
+        if hasattr(learner, 'fname'):
+            return learner.fname
+        elif fname_pattern is None:
+            return f'data_learner_{i:05d}.pickle'
+        else:
+            return fname_pattern.format(f'{i:05d}')
 
     def save(self, folder, fname_pattern=None, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = get_fname(i, fname_pattern)
+            fname = self.get_fname(learner, i, fname_pattern)
             learner.save(os.path.join(folder, fname), compress=compress)
 
     def load(self, folder, fname_pattern=None, compress=True):
         for i, learner in enumerate(self.learners):
-            fname = get_fname(i, fname_pattern)
+            fname = self.get_fname(learner, i, fname_pattern)
             learner.load(os.path.join(folder, fname), compress=compress)
 
 
