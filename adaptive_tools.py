@@ -48,7 +48,7 @@ class Learner1D(adaptive.Learner1D):
         fname = get_fname(self, fname)
         try:
             self.data = load(fname, compress)
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
             pass
 
 
@@ -63,7 +63,7 @@ class Learner2D(adaptive.Learner2D):
         try:
             self.data = load(fname, compress)
             self.refresh_stack()
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
             pass
 
     def refresh_stack(self):
@@ -85,7 +85,7 @@ class AverageLearner(adaptive.AverageLearner):
         try:
             data = load(fname, compress)
             self.data, self.npoints, self.sum_f, self.sum_f_sq = data
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
             pass
 
 
