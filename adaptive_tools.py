@@ -118,7 +118,7 @@ class Runner(adaptive.Runner):
 # Running multiple runners, each on its own core. #
 ###################################################
 
-def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, client_kwargs, ncores):
+def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, client_kwargs, nrunners=None):
     import ipyparallel
     import zmq
     import adaptive
@@ -127,7 +127,7 @@ def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, clie
     client = ipyparallel.Client(context=zmq.Context(), **client_kwargs)
     client[:].use_cloudpickle()
     loop = asyncio.new_event_loop()
-    runner = Runner(learner, executor=client.executor(slice(ncores, None)), goal=goal, ioloop=loop)
+    runner = Runner(learner, executor=client.executor(slice(nrunners, None)), goal=goal, ioloop=loop)
     save_task = runner.start_periodic_saver(save_kwargs, interval)
     loop.run_until_complete(runner.task)
     return learner
@@ -137,20 +137,18 @@ default_client_kwargs = dict(profile='pbs', timeout=300, hostname='hpc05')
 default_save_kwargs = dict(folder='tmp-{}')
 
 
-def split_learners_in_executor(learners, client, ncores, goal=None, interval=3600,
+def split_learners_in_executor(learners, client, nrunners, goal=None, interval=3600,
                                save_kwargs=default_save_kwargs,
                                client_kwargs=default_client_kwargs):
-    if goal is None:
-        if interval == 0:
-            raise Exception('Turn on periodic saving if there is no goal.')
-        goal = lambda l: False
+    if goal is None and interval == 0:
+        raise Exception('Turn on periodic saving if there is no goal.')
 
     futs = []
-    for i, _learners in enumerate(split(learners, ncores)):
+    for i, _learners in enumerate(split(learners, nrunners)):
         learner = BalancingLearner(_learners)
         fut = client[i].executor.submit(
             run_learner_in_ipyparallel_client, learner,
-            goal, interval, save_kwargs, client_kwargs, ncores
+            goal, interval, save_kwargs, client_kwargs, nrunners
         )
         futs.append(fut)
     return futs
