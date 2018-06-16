@@ -156,34 +156,6 @@ def runners_in_executor(learners, client, nrunners, goal=None, interval=3600,
     return futs
 
 
-def combine_learners_from_folders(learners, file_pattern='tmp-*/*',
-                                  save_folder=None, save_fname_pattern=None):
-    fnames = sorted(glob(file_pattern), key=alphanum_key)
-    assert len(fnames) == len(learners)
-    for learner, fname in zip(learners, fnames):
-        learner.load(*os.path.split(fname))
-
-    if save_folder is not None:
-        BalancingLearner(learners).save(save_folder, save_fname_pattern)
-
-
-######################
-# General functions. #
-######################
-
 def split(lst, n_parts):
     n = math.ceil(len(lst) / n_parts)
     return toolz.partition_all(n, lst)
-
-
-def alphanum_key(s):
-    """ Turn a string into a list of string and number chunks.
-        "z23a" -> ["z", 23, "a"]
-    """
-    keys = []
-    for _s in re.split('([0-9]+)', s):
-        try:
-            keys.append(int(_s))
-        except:
-            keys.append(_s)
-    return keys
