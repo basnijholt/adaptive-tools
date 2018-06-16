@@ -2,15 +2,11 @@
 # -*-Python-*-
 
 import asyncio
-from collections import defaultdict
 import copy
-from functools import partial
-from glob import glob
 import gzip
 import math
 import os
 import pickle
-import re
 
 import adaptive
 import toolz
