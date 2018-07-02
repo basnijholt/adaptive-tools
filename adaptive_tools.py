@@ -126,6 +126,7 @@ def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, clie
     runner = Runner(learner, executor=client.executor(targets), goal=goal, ioloop=loop)
     save_task = runner.start_periodic_saver(save_kwargs, interval)
     loop.run_until_complete(runner.task)
+    client.shutdown(targets)
     return learner
 
 
