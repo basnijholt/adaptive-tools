@@ -2,6 +2,7 @@
 # -*-Python-*-
 
 import asyncio
+from contextlib import suppress
 import copy
 import gzip
 import math
@@ -13,6 +14,7 @@ import toolz
 
 
 def save(fname, data, compress=True):
+    fname = os.path.expanduser(fname)
     os.makedirs(os.path.dirname(fname), exist_ok=True)
     _open = gzip.open if compress else open
     with _open(fname, 'wb') as f:
@@ -20,6 +22,7 @@ def save(fname, data, compress=True):
 
 
 def load(fname=None, compress=True):
+    fname = os.path.expanduser(fname)
     _open = gzip.open if compress else open
     with _open(fname, 'rb') as f:
         return pickle.load(f)
@@ -42,10 +45,8 @@ class Learner1D(adaptive.Learner1D):
 
     def load(self, fname=None, compress=True):
         fname = get_fname(self, fname)
-        try:
+        with suppress(FileNotFoundError, EOFError):
             self.data = load(fname, compress)
-        except (FileNotFoundError, EOFError):
-            pass
 
 
 class Learner2D(adaptive.Learner2D):
@@ -56,11 +57,9 @@ class Learner2D(adaptive.Learner2D):
 
     def load(self, fname=None, compress=True):
         fname = get_fname(self, fname)
-        try:
+        with suppress(FileNotFoundError, EOFError):
             self.data = load(fname, compress)
             self.refresh_stack()
-        except (FileNotFoundError, EOFError):
-            pass
 
     def refresh_stack(self):
         # Remove points from stack if they already exist
@@ -78,11 +77,9 @@ class AverageLearner(adaptive.AverageLearner):
 
     def load(self, fname=None, compress=True):
         fname = get_fname(self, fname)
-        try:
+        with suppress(FileNotFoundError, EOFError):
             data = load(fname, compress)
             self.data, self.npoints, self.sum_f, self.sum_f_sq = data
-        except (FileNotFoundError, EOFError):
-            pass
 
 
 class BalancingLearner(adaptive.BalancingLearner):
