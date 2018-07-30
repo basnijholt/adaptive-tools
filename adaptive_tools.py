@@ -78,8 +78,14 @@ class AverageLearner(adaptive.AverageLearner):
     def load(self, fname=None, compress=True):
         fname = get_fname(self, fname)
         with suppress(FileNotFoundError, EOFError):
-            data = load(fname, compress)
-            self.data, self.npoints, self.sum_f, self.sum_f_sq = data
+            self.data, npoints, sum_f, sum_f_sq = load(fname, compress)
+
+            # Re-evaluate these quantities. They are only saved for
+            # backwards compatibility.
+            real_data = [x for x in self.data.values() if x is not None]
+            self.npoints = len(real_data)
+            self.sum_f = sum(real_data)
+            self.sum_f_sq = sum(x**2 for x in real_data)
 
 
 class BalancingLearner(adaptive.BalancingLearner):
