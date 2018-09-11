@@ -47,6 +47,10 @@ class Learner1D(adaptive.Learner1D):
         fname = get_fname(self, fname)
         with suppress(FileNotFoundError, EOFError):
             self.data = load(fname, compress)
+        self.refresh()
+
+    def refresh(self):
+        self.tell_many(*zip(*self.data.items()))
 
 
 class Learner2D(adaptive.Learner2D):
@@ -59,7 +63,7 @@ class Learner2D(adaptive.Learner2D):
         fname = get_fname(self, fname)
         with suppress(FileNotFoundError, EOFError):
             self.data = load(fname, compress)
-            self.refresh_stack()
+        self.refresh_stack()
 
     def refresh_stack(self):
         # Remove points from stack if they already exist
