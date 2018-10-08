@@ -44,6 +44,10 @@ class SaverMixin(abc.ABC):
     def get_data(self):
         pass
 
+    @abc.abstractmethod
+    def set_data(self):
+        pass
+
     def save(self, fname=None, compress=True):
         fname = get_fname(self, fname)
         data = self.get_data()
