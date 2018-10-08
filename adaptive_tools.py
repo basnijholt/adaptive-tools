@@ -57,7 +57,7 @@ class SaverMixin(abc.ABC):
             self.refresh()
 
     def refresh(self):
-        self.tell_many(*zip(*self.data.items()))
+        pass
 
 
 class Learner1D(SaverMixin, adaptive.Learner1D):
@@ -67,6 +67,9 @@ class Learner1D(SaverMixin, adaptive.Learner1D):
 
     def set_data(self, data):
         self.data = data
+
+    def refresh(self):
+        self.tell_many(*zip(*self.data.items()))
 
 
 class Learner2D(SaverMixin, adaptive.Learner2D):
@@ -91,9 +94,6 @@ class AverageLearner(SaverMixin, adaptive.AverageLearner):
 
     def set_data(self, data):
         self.data, self.npoints, self.sum_f, self.sum_f_sq = data
-
-    def refresh(self):
-        pass
 
 
 class DataSaver(SaverMixin, adaptive.DataSaver):
