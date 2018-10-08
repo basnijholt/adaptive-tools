@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.6
 # -*-Python-*-
 
+import abc
 import asyncio
 from contextlib import suppress
 import copy
@@ -37,59 +38,74 @@ def get_fname(learner, fname):
         raise Exception('No `fname` supplied.')
 
 
-class Learner1D(adaptive.Learner1D):
+class SaverMixin(abc.ABC):
+
+    @abc.abstractmethod
+    def get_data(self):
+        pass
 
     def save(self, fname=None, compress=True):
         fname = get_fname(self, fname)
-        save(fname, self.data, compress)
+        data = self.get_data()
+        save(fname, data, compress)
 
     def load(self, fname=None, compress=True):
         fname = get_fname(self, fname)
         with suppress(FileNotFoundError, EOFError):
-            self.data = load(fname, compress)
-        self.refresh()
+            data = load(fname, compress)
+            self.set_data(data)
+            self.refresh()
 
     def refresh(self):
         self.tell_many(*zip(*self.data.items()))
 
 
-class Learner2D(adaptive.Learner2D):
+class Learner1D(SaverMixin, adaptive.Learner1D):
 
-    def save(self, fname=None, compress=True):
-        fname = get_fname(self, fname)
-        save(fname, self.data, compress)
+    def get_data(self):
+        return self.data
 
-    def load(self, fname=None, compress=True):
-        fname = get_fname(self, fname)
-        with suppress(FileNotFoundError, EOFError):
-            self.data = load(fname, compress)
-        self.refresh_stack()
+    def set_data(self, data):
+        self.data = data
 
-    def refresh_stack(self):
+
+class Learner2D(SaverMixin, adaptive.Learner2D):
+
+    def get_data(self):
+        return self.data
+
+    def set_data(self, data):
+        self.data = data
+
+    def refresh(self):
         # Remove points from stack if they already exist
         for point in copy.copy(self._stack):
             if point in self.data:
                 self._stack.pop(point)
 
 
-class AverageLearner(adaptive.AverageLearner):
+class AverageLearner(SaverMixin, adaptive.AverageLearner):
 
-    def save(self, fname=None, compress=True):
-        fname = get_fname(self, fname)
-        data = (self.data, self.npoints, self.sum_f, self.sum_f_sq)
-        save(fname, data, compress)
+    def get_data(self):
+        return (self.data, self.npoints, self.sum_f, self.sum_f_sq)
 
-    def load(self, fname=None, compress=True):
-        fname = get_fname(self, fname)
-        with suppress(FileNotFoundError, EOFError):
-            self.data, npoints, sum_f, sum_f_sq = load(fname, compress)
+    def set_data(self, data):
+        self.data, self.npoints, self.sum_f, self.sum_f_sq = data
 
-            # Re-evaluate these quantities. They are only saved for
-            # backwards compatibility.
-            real_data = [x for x in self.data.values() if x is not None]
-            self.npoints = len(real_data)
-            self.sum_f = sum(real_data)
-            self.sum_f_sq = sum(x**2 for x in real_data)
+    def refresh(self):
+        pass
+
+
+class DataSaver(SaverMixin, adaptive.DataSaver):
+    def get_data(self):
+        return self.learner.get_data(), self.extra_data
+
+    def set_data(self, data):
+        learner_data, self.extra_data = data
+        self.learner.set_data(learner_data)
+
+    def refresh(self):
+        self.learner.refresh()
 
 
 class BalancingLearner(adaptive.BalancingLearner):
