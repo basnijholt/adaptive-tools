@@ -21,8 +21,8 @@ def run_learner_in_ipyparallel_client(learner, goal, interval, save_kwargs, clie
     client = ipyparallel.Client(context=zmq.Context(), **client_kwargs)
     client[:].use_cloudpickle()
     loop = asyncio.new_event_loop()
-    runner = Runner(learner, executor=client.executor(targets), goal=goal, ioloop=loop)
-    save_task = runner.start_periodic_saver(save_kwargs, interval)
+    runner = adaptive.Runner(learner, executor=client.executor(targets), goal=goal, ioloop=loop)
+    save_task = runner.start_periodic_saving(save_kwargs, interval)
     loop.run_until_complete(runner.task)
     client.shutdown(targets)
     return learner
