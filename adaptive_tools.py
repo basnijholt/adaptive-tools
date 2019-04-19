@@ -42,7 +42,7 @@ def runners_in_executor(learners, client, nrunners, goal=None, interval=3600,
     split_leaners = split(learners, nrunners)
     split_targets = split(range(nrunners, len(client)), nrunners)
     for i, (_learners, targets) in enumerate(zip(split_leaners, split_targets)):
-        learner = BalancingLearner(_learners)
+        learner = adaptive.BalancingLearner(_learners)
         fut = client[i].executor.submit(
             run_learner_in_ipyparallel_client, learner,
             goal, interval, save_kwargs, client_kwargs, targets
